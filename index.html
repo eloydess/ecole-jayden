@@ -192,6 +192,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
   <button class="play" id="playBtn" style="--shade:#C9501F"><span style="font-size:40px">▶</span><span>Partie du jour<small>10 questions mélangées</small></span></button>
   <div class="tiles" id="tiles"></div>
   <button class="parentlink" id="parentBtn">Espace parents</button>
+  <span class="muted" id="syncHome" style="align-self:center;margin-top:-10px"></span>
 </section>
 
 <!-- JEU -->
@@ -271,6 +272,13 @@ h1,h2,h3{margin:0;text-wrap:balance}
   </div>
   <div id="pBody" hidden style="display:flex;flex-direction:column;gap:16px">
     <div class="panel fin" id="finPanel" hidden></div>
+    <div class="panel" id="syncPanel">
+      <h3>☁️ Partager la progression entre les appareils</h3>
+      <span class="muted">Entrez le même code famille sur le téléphone, l’iPad et l’ordinateur : la progression est la même partout. À faire une seule fois par appareil.</span>
+      <label>Code famille<input type="text" id="syncCode" inputmode="numeric" maxlength="12" autocomplete="off"></label>
+      <div class="row" style="justify-content:flex-start"><button class="btn" id="syncGo">Connecter cet appareil</button><button class="btn alt" id="syncNowBtn" hidden>Synchroniser maintenant</button></div>
+      <span id="syncState" class="muted"></span>
+    </div>
     <div class="panel">
       <h3>Temps de jeu (7 derniers jours, en minutes)</h3>
       <div class="week" id="week"></div>
@@ -345,7 +353,44 @@ const START={lettres:2,compter:2,logique:2};   // départ niveau grande section
 let S=load();
 function load(){let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(e){}const s=Object.assign({name:'Jayden',stars:0,mods:{},daily:{}},d||{});
   for(const id in START){const m=s.mods[id];if(m&&m.level<START[id]&&m.tot<40){m.level=START[id];m.hist=[]}}return s}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){S.upd=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}try{schedulePush()}catch(e){}}
+
+/* =================== Synchronisation entre appareils (Google Apps Script) =================== */
+const SYNC_URL='https://script.google.com/macros/s/AKfycbzi7Mwc0vL-MxcTC9gG69T6evsRNx8EtPc1CzEsCe6LJs8k1xmOwOK44coHKbwEYtJF/exec';
+const SYNC_KEY='ecole_jayden_sync',PROFIL='jayden';
+let SY={code:'',last:0};try{SY=Object.assign(SY,JSON.parse(localStorage.getItem(SYNC_KEY))||{})}catch(e){}
+function saveSY(){try{localStorage.setItem(SYNC_KEY,JSON.stringify(SY))}catch(e){}}
+function mergeS(a,b){if(!b)return a;if(!a)return b;
+  const r={name:(a.upd||0)>=(b.upd||0)?a.name:b.name,stars:Math.max(a.stars||0,b.stars||0),mods:{},daily:{},upd:Math.max(a.upd||0,b.upd||0)};
+  new Set([...Object.keys(a.mods||{}),...Object.keys(b.mods||{})]).forEach(id=>{const x=(a.mods||{})[id],y=(b.mods||{})[id];
+    let w=!x?y:!y?x:((x.tot||0)>(y.tot||0)||((x.tot||0)===(y.tot||0)&&(x.level||1)>=(y.level||1)))?x:y;w=JSON.parse(JSON.stringify(w));
+    if((x&&x.done)||(y&&y.done))w.done=true;r.mods[id]=w});
+  const lim=today(new Date(Date.now()-90*864e5));
+  new Set([...Object.keys(a.daily||{}),...Object.keys(b.daily||{})]).forEach(d=>{if(d<lim)return;const x=(a.daily||{})[d]||{},y=(b.daily||{})[d]||{};
+    r.daily[d]={n:Math.max(x.n||0,y.n||0),ok:Math.max(x.ok||0,y.ok||0),sec:Math.max(x.sec||0,y.sec||0)}});
+  return r}
+async function apiGet(code){const r=await fetch(`${SYNC_URL}?code=${encodeURIComponent(code)}&profil=${PROFIL}&t=${Date.now()}`);return r.json()}
+async function apiPut(code,data,keep){const r=await fetch(SYNC_URL,{method:'POST',keepalive:!!keep,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({code,profil:PROFIL,data})});return r.json()}
+let syncBusy=false,pushT=null,syncErr='';
+function schedulePush(){if(!SY.code||syncBusy)return;clearTimeout(pushT);pushT=setTimeout(()=>syncNow(),8000)}
+async function syncNow(){if(!SY.code||syncBusy)return false;syncBusy=true;clearTimeout(pushT);
+  try{const g=await apiGet(SY.code);if(!g.ok){syncErr=g.erreur==='code'?'Code famille incorrect.':'Erreur du serveur.';return false}
+    const before=JSON.stringify([S.stars,S.mods]);S=mergeS(S,g.data);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+    const p=await apiPut(SY.code,S);if(!p.ok){syncErr='Enregistrement refusé.';return false}
+    SY.last=Date.now();saveSY();syncErr='';
+    if(before!==JSON.stringify([S.stars,S.mods])&&!$('#home').hidden)home();
+    return true}
+  catch(e){syncErr='Pas de connexion internet : la progression sera envoyée plus tard.';return false}
+  finally{syncBusy=false;showSync()}}
+function showSync(){const st=$('#syncState');if(!st)return;
+  const t=SY.last?new Date(SY.last).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  st.textContent=!SY.code?'Cet appareil n’est pas encore connecté : la progression reste sur cet appareil seulement.':syncErr?syncErr:(t?`✅ Connecté. Dernière synchronisation : ${t}.`:'Connexion…');
+  $('#syncNowBtn').hidden=!SY.code;$('#syncGo').textContent=SY.code?'Changer le code':'Connecter cet appareil';
+  const h=$('#syncHome');if(h)h.textContent=SY.code?(syncErr?'☁️ En attente de connexion':'☁️ Progression partagée entre les appareils'):'Progression gardée sur cet appareil seulement'}
+document.addEventListener('visibilitychange',()=>{if(!SY.code)return;
+  if(document.visibilityState==='hidden'){if(pushT)syncNow()}
+  else syncNow()});
+window.addEventListener('online',()=>syncNow());
 function M(id){return S.mods[id]||(S.mods[id]={level:START[id]||1,hist:[],items:{},ok:0,tot:0})}
 let lastAct=0;
 function tick(ok){const d=today();const t=S.daily[d]||(S.daily[d]={n:0,ok:0,sec:0});t.n++;if(ok)t.ok++;
@@ -623,7 +668,7 @@ let gateAns=0;
 $('#parentBtn').onclick=()=>{const a=rnd(6,9),b=rnd(6,9);gateAns=a*b;$('#gq').textContent=`${a} × ${b}`;$('#ga').value='';$('#gerr').hidden=true;$('#gate').hidden=false;$('#pBody').hidden=true;show('parent')};
 $('#gok').onclick=()=>{if(+$('#ga').value===gateAns){$('#gate').hidden=true;$('#pBody').hidden=false;fillParent()}else $('#gerr').hidden=false};
 const PIDS=['lettres','syllabes','mots','ecriture','compter','calcul','logique','anglais','memoire'];
-function fillParent(){$('#pName').value=S.name;
+function fillParent(){$('#pName').value=S.name;$('#syncCode').value=SY.code||'';showSync();
   const fin=PIDS.filter(id=>M(id).done);const fp=$('#finPanel');fp.hidden=!fin.length;
   fp.innerHTML=`<h3>🏁 Contenu terminé</h3><span>${S.name} a réussi le dernier niveau de : <b>${fin.map(id=>MODS[id].t).join(', ')}</b>. L’application n’a pas de niveau plus haut dans ${fin.length>1?'ces matières':'cette matière'} : demandez à Claude d’ajouter la suite (classe suivante).</span>`;
   const w=$('#week');w.innerHTML='';const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d)}
@@ -636,9 +681,15 @@ function fillParent(){$('#pName').value=S.name;
 $('#pName').oninput=e=>{S.name=e.target.value.trim()||'Jayden';save()};
 $('#resetBtn').onclick=()=>$('#resetConfirm').hidden=false;
 $('#resetNo').onclick=()=>$('#resetConfirm').hidden=true;
-$('#resetYes').onclick=()=>{const n=S.name;S={name:n,stars:0,mods:{},daily:{}};save();$('#resetConfirm').hidden=true;fillParent();toast('Progression remise à zéro')};
+$('#resetYes').onclick=async()=>{const n=S.name;S={name:n,stars:0,mods:{},daily:{}};save();clearTimeout(pushT);$('#resetConfirm').hidden=true;fillParent();
+  if(SY.code){try{await apiPut(SY.code,S);SY.last=Date.now();saveSY()}catch(e){}}toast('Progression remise à zéro sur tous les appareils')};
+$('#syncGo').onclick=async()=>{const c=$('#syncCode').value.trim();if(!c){$('#syncState').textContent='Entrez le code famille.';return}
+  $('#syncState').textContent='Vérification…';let g;try{g=await apiGet(c)}catch(e){$('#syncState').textContent='Pas de connexion internet. Réessayez.';return}
+  if(!g.ok){$('#syncState').textContent='Code famille incorrect.';return}
+  SY.code=c;saveSY();const ok=await syncNow();fillParent();if(ok)toast('Appareil connecté : progression partagée')};
+$('#syncNowBtn').onclick=async()=>{$('#syncState').textContent='Synchronisation…';const ok=await syncNow();if(ok){fillParent();toast('Synchronisé')}};
 
-home();
+home();showSync();syncNow();
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 </script>
 
