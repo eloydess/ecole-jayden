@@ -118,9 +118,18 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .song{background:var(--card);border:3px solid var(--line);border-radius:22px;padding:12px 6px;font-size:15px;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:0 5px 0 var(--line);min-width:0;text-align:center}
 .song .ic{font-size:38px}
 .song.on{border-color:var(--berry);box-shadow:0 5px 0 var(--berry)}
-.stage{background:var(--card);border-radius:28px;border:3px solid var(--line);padding:18px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:180px;align-content:center}
-.tok{font-family:var(--f-read);font-weight:700;font-size:32px;min-width:52px;padding:4px 8px;border-radius:14px;text-align:center;color:var(--soft);transition:transform .15s,background .15s}
+.stage{background:var(--card);border-radius:28px;border:3px solid var(--line);padding:18px;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;min-height:180px}
+.bigsong{width:min(240px,70%);aspect-ratio:1;max-width:100%;border-radius:50%;background:#F2F7FF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background .25s,transform .25s;text-align:center;padding:10px}
+.bigsong.filled{box-shadow:0 8px 0 #0002;transform:scale(1.04)}
+.bigsong b{font-family:var(--f-read);font-size:64px;line-height:1}
+.bigsong span{font-family:var(--f-read);font-size:24px;opacity:.85}
+.bigsong i{font-style:normal;font-size:18px;letter-spacing:2px;color:var(--coral);max-width:100%;overflow-wrap:anywhere}
+.toks{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tok{font-family:var(--f-read);font-weight:700;font-size:28px;min-width:48px;padding:4px 8px;border-radius:14px;text-align:center;color:var(--soft);transition:transform .15s,background .15s;display:flex;flex-direction:column;align-items:center}
+.tok small{font-size:13px;font-weight:400}
+.tok.colr{background:var(--tb);color:var(--tf);opacity:.55}
 .tok.lit{background:var(--sun);color:var(--ink);transform:scale(1.2)}
+.tok.colr.lit{background:var(--tb);color:var(--tf);opacity:1}
 .toggle{display:flex;align-items:center;gap:10px;font-size:18px;align-self:center}
 .toggle input{width:26px;height:26px}
 
@@ -175,7 +184,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
   .pic{font-size:80px}.word{font-size:54px}.sent{font-size:27px}.eq{font-size:40px}.objs .g{font-size:30px}.objs .g.sm{font-size:24px}
   .ten{grid-template-columns:repeat(5,38px)}.ten i{width:38px;height:38px;font-size:24px}
   .tile b{font-size:18px}.tile .ic{font-size:34px}.card .face{font-size:34px}.card .face.t{font-size:17px}
-  .tok{font-size:24px;min-width:40px}.stk div{font-size:30px}.pad{height:260px}
+  .tok{font-size:22px;min-width:38px}.bigsong b{font-size:52px}.stk div{font-size:30px}.pad{height:260px}
 }
 </style>
 </head>
@@ -640,28 +649,62 @@ function memEnd(){const m=M('memoire'),n=MG.P.length,ok=MG.moves<=n+3;m.tot++;if
   $('#doneT').textContent=`Bravo ${S.name} !`;$('#doneP').textContent=`Toutes les paires en ${MG.moves} coups · +${n} ⭐`;$('#again').onclick=startMem;show('doneS');fanfare();say('Bravo ! Tu as trouvé toutes les paires !')}
 
 /* =================== Chansons =================== */
-const ABC=[['A','C4',1],['B','C4',1],['C','G4',1],['D','G4',1],['E','A4',1],['F','A4',1],['G','G4',2],['H','F4',1],['I','F4',1],['J','E4',1],['K','E4',1],
-['L','D4',.5],['M','D4',.5],['N','D4',.5],['O','D4',.5],['P','C4',2],['Q','G4',1],['R','G4',1],['S','F4',2],['T','E4',1],['U','E4',1],['V','D4',2],
-['W','G4',1],['X','G4',1],['Y','F4',1],['Z','E4',1],['','D4',1],['','C4',2]];
+/* Chaque note : [texte affiché, note, durée en temps, options {say, bg, fg, sub, big}] */
+const NOTE2={C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196,A3:220,B3:246.94,C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99};
+const LSAY={A:'a',B:'bé',C:'cé',D:'dé',E:'euh',F:'èf',G:'gé',H:'ache',I:'i',J:'ji',K:'ka',L:'èl',M:'èm',N:'èn',O:'o',P:'pé',Q:'ku',R:'èr',S:'èss',T:'té',U:'u',V:'vé',W:'double vé',X:'ix',Y:'i grec',Z:'zèd'};
+/* Alphabet sur l'air traditionnel « Ah ! vous dirai-je, maman » */
+const ABC=[['A','C4',1],['B','C4',1],['C','G4',1],['D','G4',1],['E','A4',1],['F','A4',1],['G','G4',2],
+['H','F4',1],['I','F4',1],['J','E4',1],['K','E4',1],['L','D4',.5],['M','D4',.5],['N','D4',.5],['O','D4',.5],['P','C4',2],
+['Q','G4',1],['R','G4',1],['S','F4',2],['T','E4',1],['U','E4',1],['V','D4',2],
+['W','G4',2],['X','F4',2],['Y','E4',2],['Z','D4',2],
+['🎉','C4',1,{say:''}],['','C4',1],['','G4',1],['','G4',1],['','A4',1],['','A4',1],['','G4',2],
+['','F4',1],['','F4',1],['','E4',1],['','E4',1],['','D4',1],['','D4',1],['Bravo !','C4',2,{say:'Bravo, tu connais ton alphabet !'}]]
+ .map(x=>x[3]?x:[x[0],x[1],x[2],{say:x[0]?LSAY[x[0]]:''}]);
+const COL=[['red','rouge','#E53935','#fff'],['yellow','jaune','#FDD835','#1B2547'],['pink','rose','#F48FB1','#1B2547'],['green','vert','#43A047','#fff'],
+['purple','violet','#8E24AA','#fff'],['orange','orange','#FB8C00','#fff'],['blue','bleu','#1E88E5','#fff']];
 const SC=['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5'];
 const SONGS={
- abc:{t:'L’alphabet',e:'🔤',beat:.62,seq:ABC},
- nb:{t:'Les nombres',e:'🔢',beat:.9,seq:SC.map((n,i)=>[String(i+1),n,1])},
- jours:{t:'Les jours',e:'📅',beat:1.05,seq:[['lundi','C4',1],['mardi','D4',1],['mercredi','E4',1],['jeudi','F4',1],['vendredi','G4',1],['samedi','A4',1],['dimanche','C5',2]]},
- count:{t:'Count to ten',e:'🇬🇧',beat:.95,lang:'en',seq:['one','two','three','four','five','six','seven','eight','nine','ten'].map((w,i)=>[w,SC[i],1])},
- col:{t:'Colours',e:'🌈',beat:1.1,lang:'en',seq:[['red','C4',1],['yellow','E4',1],['pink','G4',1],['green','C5',1],['purple','G4',1],['orange','E4',1],['blue','C4',2]]},
- mois:{t:'Les mois',e:'🗓️',beat:.95,seq:['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'].map((w,i)=>[w,['C4','D4','E4','F4','G4','A4','G4','F4','E4','D4','E4','C4'][i],1])}
+ abc:{t:'L’alphabet',e:'🔤',beat:.7,seq:ABC},
+ nb:{t:'Les nombres',e:'🔢',beat:.8,seq:SC.map((n,i)=>[String(i+1),n,1,{big:'●'.repeat(i+1)}]).concat([['10 !','C5',2,{say:'dix !'}]])},
+ jours:{t:'Les jours',e:'📅',beat:.85,seq:[['lundi','C4',1],['mardi','D4',1],['mercredi','E4',1],['jeudi','F4',1],['vendredi','G4',1],['samedi','A4',1],['dimanche','C5',2]]},
+ count:{t:'Count to ten',e:'🇬🇧',beat:.8,lang:'en',seq:['one','two','three','four','five','six','seven','eight','nine','ten'].map((w,i)=>[w,SC[i],1,{sub:String(i+1),big:'●'.repeat(i+1)}])},
+ col:{t:'Colours',e:'🌈',beat:.95,lang:'en',seq:COL.map((c,i)=>[c[0],['C4','E4','G4','C5','G4','E4','C4'][i],i===6?2:1,{sub:c[1],bg:c[2],fg:c[3]}])},
+ mois:{t:'Les mois',e:'🗓️',beat:.8,seq:['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'].map((w,i)=>[w,['C4','D4','E4','F4','G4','A4','G4','F4','E4','D4','E4','C4'][i],i===11?2:1])}
 };
-let songT=[];
-function stopSong(){songT.forEach(clearTimeout);songT=[];try{speechSynthesis.cancel()}catch(e){}document.querySelectorAll('.song').forEach(s=>s.classList.remove('on'))}
+/* Moteur musical : mélodie liée (sans saccade), basse, accords doux et petit rythme */
+let songT=[],songNodes=[];
+function stopSong(){songT.forEach(clearTimeout);songT=[];songNodes.forEach(n=>{try{n.stop()}catch(e){}});songNodes=[];try{speechSynthesis.cancel()}catch(e){}
+  document.querySelectorAll('.song').forEach(s=>s.classList.remove('on'))}
 function openSongs(){const l=$('#songList');l.innerHTML='';Object.entries(SONGS).forEach(([id,s])=>{const b=document.createElement('button');b.className='song';b.dataset.id=id;
-  b.innerHTML=`<span class="ic">${s.e}</span><b>${s.t}</b>`;b.onclick=()=>playSong(id);l.appendChild(b)});show('songsS')}
-function playSong(id){stopSong();ac();const s=SONGS[id];document.querySelector(`.song[data-id="${id}"]`).classList.add('on');
-  const st=$('#stage');st.innerHTML='';const toks=s.seq.map(x=>{const d=document.createElement('span');d.className='tok';d.textContent=x[0];if(x[0])st.appendChild(d);return d});
-  const a=ac();let t=0;const t0=a?a.currentTime+.3:0;const voice=$('#voiceOn').checked;
-  s.seq.forEach((x,i)=>{const dur=x[2]*s.beat;if(a)tone(NOTE[x[1]],t0+t,dur*.95,'triangle',.14);
-    songT.push(setTimeout(()=>{toks.forEach(k=>k.classList.remove('lit'));if(x[0]){toks[i].classList.add('lit');if(voice)say([[x[0],s.lang||'fr']],1.05)}},(t+.3)*1000));t+=dur});
-  songT.push(setTimeout(()=>{toks.forEach(k=>k.classList.remove('lit'));document.querySelectorAll('.song').forEach(q=>q.classList.remove('on'))},(t+.6)*1000))}
+  b.innerHTML=`<span class="ic">${s.e}</span><b>${s.t}</b>`;b.onclick=()=>playSong(id);l.appendChild(b)});$('#stage').innerHTML='<span class="muted">Choisis une chanson.</span>';show('songsS')}
+function sNote(a,out,f,t,d,type,vol,rel){const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.03);g.gain.setTargetAtTime(vol*.7,t+.05,.15);g.gain.setTargetAtTime(0,t+d,rel/3);
+  o.connect(g);g.connect(out);o.start(t);o.stop(t+d+rel+.1);songNodes.push(o)}
+function sTick(a,out,t,vol){const len=Math.floor(a.sampleRate*.05),b=a.createBuffer(1,len,a.sampleRate),c=b.getChannelData(0);for(let i=0;i<len;i++)c[i]=(Math.random()*2-1)*(1-i/len)**3;
+  const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();s.buffer=b;f.type='highpass';f.frequency.value=6000;g.gain.value=vol;s.connect(f);f.connect(g);g.connect(out);s.start(t);songNodes.push(s)}
+function rootOf(n){const k=n[0];return k==='C'||k==='E'?['C3','E4','G4']:k==='G'||k==='B'||k==='D'?['G3','B3','D4']:['F3','A3','C4']}
+function playSong(id){stopSong();const a=ac();const s=SONGS[id];document.querySelector(`.song[data-id="${id}"]`).classList.add('on');
+  const st=$('#stage');st.innerHTML='';const big=document.createElement('div');big.className='bigsong';st.appendChild(big);
+  const row=document.createElement('div');row.className='toks';st.appendChild(row);
+  const toks=s.seq.map(x=>{const d=document.createElement('span');d.className='tok';const o=x[3]||{};
+    d.innerHTML=x[0]+(o.sub?`<small>${o.sub}</small>`:'');if(o.bg){d.style.setProperty('--tb',o.bg);d.style.setProperty('--tf',o.fg);d.classList.add('colr')}
+    if(x[0]&&x[0]!=='🎉'&&x[0]!=='Bravo !')row.appendChild(d);return d});
+  const voice=$('#voiceOn').checked,lead=.12;let t=0;const t0=a?a.currentTime+.4:0;
+  let out=null;if(a){out=a.createGain();out.gain.value=.9;out.connect(a.destination)}
+  s.seq.forEach((x,i)=>{const dur=x[2]*s.beat,o=x[3]||{};
+    if(a){sNote(a,out,NOTE2[x[1]],t0+t,dur*.98,'triangle',.16,.35);sNote(a,out,NOTE2[x[1]]*2,t0+t,dur*.9,'sine',.03,.3);
+      const beatsHere=x[2];for(let b=0;b<beatsHere;b+=.5){const tb=t0+t+b*s.beat;if(Math.abs(tb-t0-Math.round((tb-t0)/s.beat)*s.beat)<.01)sTick(a,out,tb,(Math.round((tb-t0)/s.beat)%2===0)?.09:.05)}}
+    songT.push(setTimeout(()=>{toks.forEach(k=>k.classList.remove('lit'));if(x[0]&&row.contains(toks[i]))toks[i].classList.add('lit');
+      big.style.background=o.bg||'';big.style.color=o.fg||'';big.classList.toggle('filled',!!o.bg);
+      big.innerHTML=x[0]?`<b>${x[0]}</b>${o.sub?`<span>${o.sub}</span>`:''}${o.big?`<i>${o.big}</i>`:''}`:big.innerHTML},(t+.4)*1000));
+    const sp=o.say!==undefined?o.say:x[0];
+    if(voice&&sp)songT.push(setTimeout(()=>{try{const u=new SpeechSynthesisUtterance(sp);const en=(s.lang||'fr')==='en';u.lang=en?'en-GB':'fr-FR';const v=en?VEN:VOICE;if(v)u.voice=v;
+      u.rate=sp.length>12?1:1.15;u.pitch=Math.min(1.6,Math.max(.8,.8+(NOTE2[x[1]]-261)/300));if(speechSynthesis.pending)speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}},Math.max(0,(t+.4-lead))*1000));
+    t+=dur});
+  /* accompagnement : basse et accord toutes les 2 temps */
+  if(a){let acc=0;s.seq.forEach(x=>{const n=x[2];for(let b=0;b<n;b+=.5){const tt=acc+b;if(Math.abs(tt/2-Math.round(tt/2))<.01){const ch=rootOf(x[1]);
+        sNote(a,out,NOTE2[ch[0]]/2*2,t0+tt*s.beat,s.beat*1.9,'sine',.12,.3);ch.slice(1).forEach(c=>sNote(a,out,NOTE2[c]/2,t0+tt*s.beat,s.beat*1.9,'sine',.035,.4))}}acc+=n})}
+  songT.push(setTimeout(()=>{toks.forEach(k=>k.classList.remove('lit'));document.querySelectorAll('.song').forEach(q=>q.classList.remove('on'))},(t+.9)*1000))}
 
 /* =================== Parents =================== */
 let gateAns=0;
